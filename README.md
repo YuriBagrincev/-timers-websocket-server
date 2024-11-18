@@ -17,4 +17,3 @@ API точно так же работают по AJAX.
     commentEnd: "#]",
   },
 ```
-# -timers-websocket-server
