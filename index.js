@@ -1,3 +1,4 @@
+// index.js (Серверная часть)
 const express = require("express");
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
@@ -49,8 +50,11 @@ app.post("/signup", async (req, res) => {
       return res.status(400).json({ error: "Пользователь с таким именем уже существует" });
     }
 
+    // Хеширую пароль
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     // Создаю нового пользователя
-    const newUser = new User({ username, password });
+    const newUser = new User({ username, password: hashedPassword });
     await newUser.save();
 
     // Создаю сессию
@@ -71,7 +75,7 @@ app.post("/login", async (req, res) => {
   try {
     // Ищу пользователя
     const user = await User.findOne({ username });
-    if (!user || !(await user.comparePassword(password))) {
+    if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ error: "Неверное имя пользователя или пароль" });
     }
 
@@ -240,7 +244,7 @@ async function sendAllTimersToUser(userId) {
   }
 }
 
-// Отправка active_timers каждую 1
+// Отправка active_timers каждую 1 секунду
 setInterval(async () => {
   for (const userId in clients) {
     const ws = clients[userId];

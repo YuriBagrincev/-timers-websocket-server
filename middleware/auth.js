@@ -1,3 +1,4 @@
+// middleware/auth.js
 const crypto = require('crypto');
 const Session = require('../models/session');
 
