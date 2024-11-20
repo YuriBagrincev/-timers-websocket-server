@@ -1,5 +1,5 @@
 {
-  "name": "timers-cli",
+  "name": "timers-server",
   "version": "1.0.0",
   "description": "Multi-user timer service",
   "main": "index.js",
@@ -8,13 +8,13 @@
     "dev": "nodemon index.js"
   },
   "dependencies": {
-    "bcrypt": "^5.1.1",
-    "dotenv": "^16.4.5",
+    "bcrypt": "^5.1.0",
+    "dotenv": "^16.0.3",
     "express": "^4.18.2",
-    "mongoose": "^7.8.2",
-    "ws": "^8.13.0"
+    "mongoose": "^7.0.0",
+    "ws": "^8.11.0"
   },
   "devDependencies": {
-    "nodemon": "^2.0.22"
+    "nodemon": "^2.0.20"
   }
 }
