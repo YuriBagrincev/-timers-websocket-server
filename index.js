@@ -5,12 +5,13 @@ const dotenv = require("dotenv");
 const bcrypt = require("bcrypt");
 const http = require("http");
 const WebSocket = require("ws");
+const path = require("path");
 
 dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
-const wss = new WebSocket.Server({ server }); // Создаю WebSocket-сервер
+const wss = new WebSocket.Server({ server }); // Создаем WebSocket-сервер
 
 const PORT = process.env.PORT || 3000;
 
@@ -21,43 +22,45 @@ const Session = require("./models/session");
 // Middleware
 const { authMiddleware, createSession, deleteSession } = require("./middleware/auth");
 
-// MongoDB
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-  .then(() => {
-    console.log("Подключение к MongoDB успешно установлено");
-  })
-  .catch((err) => {
-    console.error("Ошибка подключения к MongoDB:", err);
-  });
+// MongoDB подключение через mongo.js
+require("./mongo");
 
 // Middleware для обработки JSON
 app.use(express.json());
 
+// Устанавливаем корректные заголовки CSP
+app.use((req, res, next) => {
+  res.setHeader("Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline';");
+  next();
+});
+
+// Маршруты для проверки работы сервера
+app.get('/', (req, res) => {
+  res.send('Сервер работает корректно.');
+});
+
 // Маршруты аутентификации
 
-// Регистрирую пользователя
+// Регистрация пользователя
 app.post("/signup", async (req, res) => {
   console.log("Получен запрос на /signup:", req.body);
   const { username, password } = req.body;
 
   try {
-    // Проверяю, существует ли пользователь
+    // Проверяем, существует ли пользователь
     const existingUser = await User.findOne({ username });
     if (existingUser) {
       return res.status(400).json({ error: "Пользователь с таким именем уже существует" });
     }
 
-    // Хеширую пароль
+    // Хешируем пароль
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Создаю нового пользователя
+    // Создаем нового пользователя
     const newUser = new User({ username, password: hashedPassword });
     await newUser.save();
 
-    // Создаю сессию
+    // Создаем сессию
     const sessionId = await createSession(newUser);
 
     res.status(201).json({ sessionId });
@@ -73,13 +76,13 @@ app.post("/login", async (req, res) => {
   const { username, password } = req.body;
 
   try {
-    // Ищу пользователя
+    // Ищем пользователя
     const user = await User.findOne({ username });
     if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ error: "Неверное имя пользователя или пароль" });
     }
 
-    // Создаю сессию
+    // Создаем сессию
     const sessionId = await createSession(user);
 
     res.json({ sessionId });
@@ -138,7 +141,7 @@ app.post("/api/timers", authMiddleware, async (req, res) => {
 
     res.status(201).json(savedTimer);
 
-    // После создания таймера, отправка обновлённого списока таймеров через WebSocket
+    // После создания таймера, отправка обновлённого списка таймеров через WebSocket
     sendAllTimersToUser(userId);
   } catch (error) {
     console.error("Ошибка создания таймера:", error);
@@ -174,7 +177,7 @@ app.patch("/api/timers/:id", authMiddleware, async (req, res) => {
 
     res.json(timer);
 
-    // Обновляю список остановленных таймеров через WebSocket
+    // Обновляем список остановленных таймеров через WebSocket
     sendAllTimersToUser(userId);
   } catch (error) {
     console.error("Ошибка при остановке таймера:", error);
@@ -199,7 +202,7 @@ wss.on("connection", (ws, req) => {
     return;
   }
 
-  // Проверяю сессию в базе данных
+  // Проверяем сессию в базе данных
   Session.findOne({ sessionId }).populate('userId').then(session => {
     if (!session || !session.userId) {
       ws.send(JSON.stringify({ error: "Unauthorized: Invalid sessionId" }));
@@ -208,14 +211,14 @@ wss.on("connection", (ws, req) => {
     }
 
     const userId = session.userId._id.toString();
-    // Сохраняю WebSocket-подключение для пользователя
+    // Сохраняем WebSocket-подключение для пользователя
     clients[userId] = ws;
 
-    // Отправляю актуальный список таймеров этому пользователю
+    // Отправляем актуальный список таймеров этому пользователю
     sendAllTimersToUser(userId);
 
     ws.on('close', () => {
-      // Удаляю пользователя из списка при отключении
+      // Удаляем пользователя из списка при отключении
       delete clients[userId];
     });
   }).catch(err => {
@@ -267,7 +270,17 @@ setInterval(async () => {
   }
 }, 1000);
 
+// Обработка ошибок и 404
+app.use((req, res, next) => {
+  res.status(404).json({ error: 'Страница не найдена' });
+});
+
+app.use((err, req, res, next) => {
+  console.error("Ошибка на сервере:", err);
+  res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+});
+
 // Запуск сервера
 server.listen(PORT, () => {
-  console.log(`Сервер запущен на http://localhost:${PORT}`);
+  console.log(`Сервер запущен на порту ${PORT}`);
 });
