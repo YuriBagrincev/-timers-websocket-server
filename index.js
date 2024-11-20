@@ -1,4 +1,3 @@
-// index.js (Серверная часть)
 const express = require("express");
 const mongoose = require("mongoose");
 const dotenv = require("dotenv");
@@ -11,7 +10,7 @@ dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
-const wss = new WebSocket.Server({ server }); // Создаем WebSocket-сервер
+const wss = new WebSocket.Server({ server });
 
 const PORT = process.env.PORT || 3000;
 
@@ -28,7 +27,7 @@ require("./mongo");
 // Middleware для обработки JSON
 app.use(express.json());
 
-// Устанавливаем корректные заголовки CSP
+// Устанавливаю корректные заголовки CSP
 app.use((req, res, next) => {
   res.setHeader("Content-Security-Policy", "default-src 'self'; style-src 'self' 'unsafe-inline';");
   next();
@@ -47,20 +46,20 @@ app.post("/signup", async (req, res) => {
   const { username, password } = req.body;
 
   try {
-    // Проверяем, существует ли пользователь
+    // Проверяю, существует ли пользователь
     const existingUser = await User.findOne({ username });
     if (existingUser) {
       return res.status(400).json({ error: "Пользователь с таким именем уже существует" });
     }
 
-    // Хешируем пароль
+    // Хеширую пароль
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Создаем нового пользователя
+    // Создаю нового пользователя
     const newUser = new User({ username, password: hashedPassword });
     await newUser.save();
 
-    // Создаем сессию
+    // Создаю сессию
     const sessionId = await createSession(newUser);
 
     res.status(201).json({ sessionId });
@@ -76,13 +75,13 @@ app.post("/login", async (req, res) => {
   const { username, password } = req.body;
 
   try {
-    // Ищем пользователя
+    // Ищу пользователя
     const user = await User.findOne({ username });
     if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ error: "Неверное имя пользователя или пароль" });
     }
 
-    // Создаем сессию
+    // Создаю сессию
     const sessionId = await createSession(user);
 
     res.json({ sessionId });
@@ -177,7 +176,7 @@ app.patch("/api/timers/:id", authMiddleware, async (req, res) => {
 
     res.json(timer);
 
-    // Обновляем список остановленных таймеров через WebSocket
+    // Обновляю список остановленных таймеров через WebSocket
     sendAllTimersToUser(userId);
   } catch (error) {
     console.error("Ошибка при остановке таймера:", error);
@@ -202,7 +201,7 @@ wss.on("connection", (ws, req) => {
     return;
   }
 
-  // Проверяем сессию в базе данных
+  // Проверяю сессию в базе данных
   Session.findOne({ sessionId }).populate('userId').then(session => {
     if (!session || !session.userId) {
       ws.send(JSON.stringify({ error: "Unauthorized: Invalid sessionId" }));
@@ -211,14 +210,14 @@ wss.on("connection", (ws, req) => {
     }
 
     const userId = session.userId._id.toString();
-    // Сохраняем WebSocket-подключение для пользователя
+    // Сохраняю WebSocket-подключение для пользователя
     clients[userId] = ws;
 
-    // Отправляем актуальный список таймеров этому пользователю
+    // Отправляю актуальный список таймеров этому пользователю
     sendAllTimersToUser(userId);
 
     ws.on('close', () => {
-      // Удаляем пользователя из списка при отключении
+      // Удаляю пользователя из списка при отключении
       delete clients[userId];
     });
   }).catch(err => {
@@ -254,7 +253,7 @@ setInterval(async () => {
     if (ws && ws.readyState === WebSocket.OPEN) {
       try {
         const activeTimers = await Timer.find({ userId, isActive: true });
-        // Рассчитываем время активности таймеров
+        // Рассчитываю время активности таймеров
         const timersWithDuration = activeTimers.map(timer => ({
           ...timer.toObject(),
           currentDuration: Date.now() - new Date(timer.start).getTime()

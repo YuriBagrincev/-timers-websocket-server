@@ -1,4 +1,3 @@
-// middleware/auth.js
 const crypto = require('crypto');
 const Session = require('../models/session');
 
@@ -37,7 +36,7 @@ async function authMiddleware(req, res, next) {
       return res.status(401).json({ error: "Недействительная сессия" });
     }
 
-    // Сохраняем информацию о пользователе для дальнейшего использования
+    // Сохраняю информацию о пользователе для дальнейшего использования
     req.user = session.userId;
 
     console.log("Авторизация пройдена");
